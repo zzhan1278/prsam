@@ -1,0 +1,90 @@
+name: deep_learning
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  # Python基础
+  - python=3.10
+  
+  # PyTorch生态系统
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - torchtext
+  
+  # 数据科学核心
+  - numpy
+  - pandas
+  - scipy
+  - matplotlib
+  - seaborn
+  - plotly
+  - scikit-learn
+  - scikit-image
+  - opencv
+  
+  # Jupyter环境
+  - jupyter
+  - jupyterlab
+  - ipython
+  - notebook
+  
+  # 实用工具
+  - tqdm
+  - pyyaml
+  - requests
+  - pillow
+  
+  # 可视化
+  - dash
+  
+  # pip安装的包
+  - pip
+  - pip:
+    # 深度学习框架扩展
+    - transformers
+    - datasets
+    - accelerate
+    - timm
+    - efficientnet-pytorch
+    - segmentation-models-pytorch
+    - albumentations
+    
+    # 医学图像处理
+    - nibabel
+    - pydicom
+    - SimpleITK
+    - monai
+    - torchio
+    - nnunet
+    
+    # 实验跟踪和可视化
+    - tensorboard
+    - tensorboardX
+    - wandb
+    - mlflow
+    - gradio
+    - streamlit
+    
+    # 配置管理
+    - omegaconf
+    - hydra-core
+    
+    # 代码质量工具
+    - black
+    - flake8
+    - isort
+    - pytest
+    
+    # 命令行工具
+    - rich
+    - typer
+    - click
+    
+    # 性能优化库（可选，可能需要编译）
+    # - apex
+    # - flash-attn
+    # - xformers 
