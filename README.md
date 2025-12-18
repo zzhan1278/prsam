@@ -1,85 +1,42 @@
-# PR-SAM: Patient-Specific Prior-Refined Prompting of a Frozen SAM for Quality-Robust CBCT Segmentation
+# PR-SAM: Prior-Refined Segment Anything Model for Quality-Robust CBCT Segmentation
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch 1.9+](https://img.shields.io/badge/pytorch-1.9+-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Framework](https://img.shields.io/badge/PyTorch-1.12+-ee4c2c.svg)](https://pytorch.org/)
 
-Official implementation of **PR-SAM** (Prior-Refined SAM), a novel framework for quality-robust CBCT segmentation in online adaptive radiotherapy.
+Official implementation of the paper: **"PR-SAM: Prior-Refined Segment Anything Model for Quality-Robust CBCT Segmentation in Adaptive Radiotherapy"**.
 
-<p align="center">
-  <img src="results/figures/two_patients_comparison.png" width="100%" alt="Segmentation Comparison">
-</p>
+PR-SAM is a novel framework that conditions a **frozen Segment Anything Model (SAM)** with patient-specific planning contours to achieve robust segmentation on daily CBCT images, even under severe artifact conditions (e.g., sparse-view acquisitions).
 
 ## 📋 Abstract
 
-Online adaptive radiotherapy (ART) requires fast, reliable segmentation of same-day CBCT despite artifacts that degrade image quality. We propose **PR-SAM**, a planning-CT guided approach that injects patient-specific anatomical priors into a frozen Segment Anything Model (SAM) to achieve robust CBCT segmentation without backbone fine-tuning.
+Online adaptive radiotherapy (ART) requires fast, reliable segmentation of same-day CBCT despite artifacts that degrade image quality. We propose **PR-SAM**, a planning-CT guided approach that injects patient-specific anatomical priors into a frozen SAM backbone. By leveraging a lightweight **Prior Encoder**, a **CBCT Domain Adapter**, and an **Adaptive Correction Network**, PR-SAM reconciles prior knowledge with daily image evidence without fine-tuning the heavy SAM weights.
 
-**Key Results:**
-- **Dice: 0.9611** | **HD95: 2.46 mm** (overall performance)
-- **Quality-invariant**: Dice range 0.0005 across all quality tiers
-- **+4.9% Dice** improvement over best baseline (U-Net)
-- **-75.6% HD95** reduction compared to best baseline
-
-<p align="center">
-  <img src="results/figures/quality_robustness_multi_metrics.png" width="100%" alt="Quality Robustness">
-</p>
+### Key Results (on CBCTLiTS dataset)
+*   **Overall Performance**: Dice **0.9611** | HD95 **2.46 mm**
+*   **Quality-Robustness**: Dice varies only **0.0005** across 5 quality tiers (32 to 490 projections).
+*   **State-of-the-Art Comparison**:
+    *   **+6.6%** Dice improvement over the best baseline (PolarUNet).
+    *   **-86.8%** reduction in HD95 errors compared to PolarUNet.
+    *   Significantly outperforms MedSAM and nnU-Net in sparse-view regimes.
 
 ## 🏗️ Architecture
 
-PR-SAM consists of four key components:
+PR-SAM consists of four key components designed for parameter efficiency (~2.3M trainable params):
 
-1. **Prior Encoder** (`N_prior`): Converts registered pCT masks into multi-channel representations (binary, signed-distance, boundary maps)
-2. **Adaptive Correction Network** (`N_correct`): Learns feature-level residual refinement
-3. **CBCT Domain Adapter**: Preserves domain-specific details from CBCT images
-4. **Dual-Branch Decoding**: Combines prior-guided and correction branches for robust inference
+1.  **Prior Encoder**: Converts registered pCT masks into multi-channel geometric features (Mask, SDF, Boundary).
+2.  **CBCT Domain Adapter**: Adapts SAM's image embedding for CBCT texture without altering frozen weights.
+3.  **Adaptive Correction Network**: Learns residual feature refinements to correct prior-image discrepancies.
+4.  **Dual-Branch Decoding**: Fuses a *Prior-Aware* branch and an *Appearance-Only* branch for robust inference.
 
-```
-                    ┌─────────────────────────────────────────────────────────┐
-                    │                    PR-SAM Architecture                   │
-                    └─────────────────────────────────────────────────────────┘
-                    
-    pCT Mask ──► Prior Encoder ──► Prior Features ──┬──► Prior Branch ──┐
-                    (0.37M)              │          │                    │
-                                         │          ▼                    │
-                                         └──► Correction Network ──►─────┼──► Fusion ──► Output
-                                              (1.84M)                    │
-    CBCT ────► SAM Encoder ──► CBCT Features ──► CBCT Adapter ──────────┘
-               (frozen 93.7M)                    (0.07M)
-```
-
-## 📁 Project Structure
-
-```
-PR-SAM/
-├── models/
-│   ├── proposed/
-│   │   └── pgrsam/
-│   │       ├── pgr_sam_model.py      # Main PR-SAM model
-│   │       ├── pct_prior_encoder.py  # Prior encoder network
-│   │       ├── correction_network.py # Adaptive correction network
-│   │       └── ablation_models.py    # Ablation study variants
-│   └── baselines/
-│       ├── unet/                     # U-Net
-│       ├── attention_unet/           # Attention U-Net
-│       ├── nnunet/                   # nnU-Net
-│       ├── resunet/                  # ResU-Net
-│       ├── vnet/                     # V-Net
-│       └── polar_unet/               # PolarUNet
-├── data/
-│   ├── dataset.py                    # Base dataset class
-│   └── multi_quality_dataset.py      # Multi-quality CBCT dataset
-├── configs/
-│   ├── proposed_models.yaml          # PR-SAM configuration
-│   ├── baseline_models.yaml          # Baseline configurations
-│   └── ablation_study.yaml           # Ablation study configs
-├── segment_anything_medsam/          # SAM backbone
-├── utils/
-│   ├── metrics.py                    # Evaluation metrics (Dice, IoU, HD95)
-│   └── data_preprocessing.py         # Data preprocessing utilities
-├── train_pgrsam.py                   # Training script for PR-SAM
-├── train.py                          # Training script for baselines
-├── evaluate_pgrsam.py                # Evaluation script
-└── preprocess_dataset.py             # Data preprocessing
-
-
-
+```mermaid
+graph LR
+    A[pCT Mask] --> B(Prior Encoder)
+    C[CBCT Image] --> D(Frozen SAM Encoder)
+    D --> E(CBCT Adapter)
+    B --> F{Fusion & Correction}
+    E --> F
+    F --> G[Prior Branch]
+    E --> H[Appearance Branch]
+    G --> I(Output)
+    H --> I
